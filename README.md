@@ -1,5 +1,8 @@
 # ⚖️ Aletheia-GAK
 
+[![CI](https://github.com/andry7610/Aletheia-GAK/actions/workflows/python-package.yml/badge.svg)](https://github.com/andry7610/Aletheia-GAK/actions/workflows/python-package.yml)
+[![Tests](https://img.shields.io/badge/tests-12_passed-brightgreen.svg)]()
+
 **Нейросимволический движок-верификатор для физических гипотез, генерируемых ИИ.**
 
     Генеративные нейросети (LLM) блестяще пишут код и объясняют физику, но часто галлюцинируют в размерностях, забывают коэффициенты (\(1/2\), \(2\pi\)) или путают константы (например, постоянную Планка \(h\) и приведённую \(\hbar\)). 
