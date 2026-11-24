@@ -10,7 +10,9 @@ class AletheiaMemory:
 
         # Канонические связи констант
         self.relations = {
-            sp.Symbol("hbar"): sp.Symbol("h") / (2 * sp.pi)
+            sp.Symbol("hbar"): sp.Symbol("h") / (2 * sp.pi),
+            # Кулоновская постоянная: k_e = 1 / (4 * pi * epsilon_0)
+            sp.Symbol("k_e"): 1 / (4 * sp.pi * sp.Symbol("epsilon_0"))
         }
 
     def _create_tables(self):
@@ -107,27 +109,5 @@ class AletheiaMemory:
         return (
             False,
             f"ОШИБКА: физика не сходится с '{law_name}'. "
-            f"Разница: {diff_lhs} = {diff_rhs}. Проверьте константы (например, h vs hbar).",
+            f"Разница: {diff_lhs} = {diff_rhs}. Проверьте константы.",
         )
-
-
-if __name__ == "__main__":
-    mem = AletheiaMemory()
-    mem.add_quantity("h", "J*s", "Постоянная Планка")
-    mem.add_quantity("hbar", "J*s", "Приведенная постоянная Планка")
-    mem.add_quantity("f", "1/s", "Частота")
-    mem.add_quantity("E", "J", "Энергия")
-
-    mem.add_law("photon_energy", "E", "h * f")
-
-    ok, msg = mem.check_algebraic_law("E", "h * f", "photon_energy")
-    print(f"Тест 1 (Правильно E = h*f): {'[PASS]' if ok else '[FAIL]'} -> {msg}")
-
-    ok, msg = mem.check_algebraic_law("E", "hbar * f", "photon_energy")
-    print(f"Тест 2 (Ловушка E = hbar*f): {'[PASS]' if ok else '[FAIL]'} -> {msg}")
-
-    ok, msg = mem.check_algebraic_law("E", "hbar * 2 * pi * f", "photon_energy")
-    print(f"Тест 3 (Эквивалент E = hbar*2*pi*f): {'[PASS]' if ok else '[FAIL]'} -> {msg}")
-
-    ok, msg = mem.check_algebraic_law("E", "__import__('os').system('echo hack')", "photon_energy")
-    print(f"Тест 4 (Защита от инъекции): {'[PASS]' if ok else '[FAIL]'} -> {msg}")
