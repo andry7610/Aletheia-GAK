@@ -1,0 +1,6 @@
+sympy
+pint
+pytest
+openai
+mcp
+streamlit
