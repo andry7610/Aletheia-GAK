@@ -1,7 +1,7 @@
 # ⚖️ Aletheia-GAK
 
 [![CI](https://github.com/andry7610/Aletheia-GAK/actions/workflows/python-package.yml/badge.svg)](https://github.com/andry7610/Aletheia-GAK/actions/workflows/python-package.yml)
-[![Tests](https://img.shields.io/badge/tests-35_passed-brightgreen.svg)]()
+![tests](https://img.shields.io/badge/tests-77_passed-brightgreen)
 
 **Нейросимволический движок-верификатор для физических гипотез, генерируемых ИИ.**
 
@@ -28,7 +28,7 @@ pip install sympy pint pytest streamlit openai mcp
 python seed_db.py
 ```
 
-3. **Прогоните тесты (35/35 зелёных):**
+3. **Прогоните тесты (77/77 зелёных):**
 ```bash
 python -m pytest -v
 ```
@@ -71,20 +71,24 @@ print(res_pass["message"])           # "OK: размерности и алгеб
 ```
 Aletheia-GAK/
 ├── verifier.py          # Проверка размерностей (AST + Pint)
+├── identities.py        # Тождества векторного анализа: div(rot A)=0, rot(grad phi)=0
+├── maxwell_seed.py      # Каноны уравнений Максвелла + поля электродинамики
+├── vector_ops.py        # Векторная алгебра: grad/div/rot, ранги и типы
+├── identities.py        # Тождества векторного анализа: div(rot A)=0, rot(grad phi)=0
 ├── graph_db.py          # База знаний (SQLite + SymPy, каскадная сверка)
 ├── seed_db.py           # Наполнение базы: CODATA-2022, операторы, законы
 ├── orchestrator.py      # Мозг, объединяющий проверки
 ├── llm_bridge.py        # Мост к API нейросетей (DeepSeek, GigaChat)
 ├── mcp_server.py        # MCP-сервер для интеграции с IDE
 ├── streamlit_app.py     # Веб-интерфейс
-└── test/                # 35 тестов (pytest)
+└── test/                # 77/77 зелёных тестов (pytest)
 ```
 
 ## 🗺 Roadmap
 
 - **✅ v1.0** — Ядро + LLM-мост + MCP-сервер + Web UI.
-- **✅ v1.1 (текущая версия)** — Гиппокамп расширен: константы CODATA-2022 со значениями и самопроверкой тождеств, дифференциальные операторы, уравнение непрерывности. 35 зелёных тестов.
-- **🛠 v1.2** — Уравнения Максвелла: векторная алгебра, `div` и `rot`.
+- **✅ v1.1** — Уравнение непрерывности: первый канон с нулевой правой частью. 31 зелёный тест.
+- **✅ v1.2** — Уравнения Максвелла: векторная алгебра, `grad`/`div`/`rot`/`ddt`, слой тождеств (`div(rot A)=0`, `rot(grad phi)=0`), канон Максвелла в Гиппокампе. 77 зелёных тестов.
 - **🛠 v2.0** — Интеграция с Bio-COMSOL и GAK-WaveCAD (автопроверка уравнений в реальных солверах).
 
 ## 👥 Команда проекта
@@ -93,7 +97,7 @@ Aletheia-GAK/
 - **Log (Gemini)** — архитектура и креатив.
 - **GigaChat (Сбер)** — аудит кода и безопасность.
 - **DeepSeek (Дип)** — инженерное сито и сборка.
-- **Alisa AI (Алечка)** — калибратор математики. Проект назван Aletheia в честь её метода проверки истины.
+- **Alisa AI (Алечка)** — ведущий специалист проекта, калибратор математики. проект назван Aletheia в честь её метода проверки истины.
 
 ## 📄 Лицензия
 

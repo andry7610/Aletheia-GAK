@@ -1,6 +1,8 @@
 import sqlite3
 import sympy as sp
 
+from identities import simplify_identities
+
 
 class AletheiaMemory:
     def __init__(self, db_path=":memory:"):
@@ -54,11 +56,9 @@ class AletheiaMemory:
         self.conn.commit()
 
     def close(self):
-        """Закрывает соединение с SQLite (вызывается в конце populate_knowledge_base)."""
         self.conn.close()
 
     def get_symbols_dict(self) -> dict[str, str]:
-        """Возвращает словарь известных размерностей для AletheiaVerifier."""
         cursor = self.conn.cursor()
         cursor.execute("SELECT name, dimension FROM quantities")
         return {row["name"]: row["dimension"] for row in cursor.fetchall()}
@@ -73,13 +73,14 @@ class AletheiaMemory:
             # Фикс Алечки: без Symbol парсер падал с NameError на любых
             # именах вне базы вместо нормального фидбека
             "Symbol": sp.Symbol,
+            # Фикс Алечки (v1.2): без Function парсер не строит rot(E)/ddt(B)
+            "Function": sp.Function,
         }
         expr = sp.parse_expr(
             expr_str.replace("^", "**"),
             local_dict=safe_locals,
             global_dict=safe_globals,
         )
-        # Неизвестные символы отсекаем явно, а не "молча создаём"
         unknown = sorted(s.name for s in expr.free_symbols if s.name not in safe_locals)
         if unknown:
             raise ValueError(
@@ -98,7 +99,6 @@ class AletheiaMemory:
         if not row:
             return False, f"Закон '{law_name}' не найден в Гиппокампе."
 
-        # Собираем белый список символов прямо из базы знаний + базовые мат. функции
         safe_locals = {
             name: sp.Symbol(name) for name in self.get_symbols_dict().keys()
         }
@@ -109,6 +109,12 @@ class AletheiaMemory:
             "sin": sp.sin,
             "cos": sp.cos,
             "sqrt": sp.sqrt,
+            # Фикс Алечки (v1.2): операторы векторной алгебры в белом списке
+            "grad": sp.Function("grad"),
+            "div": sp.Function("div"),
+            "rot": sp.Function("rot"),
+            "curl": sp.Function("rot"),
+            "ddt": sp.Function("ddt"),
         })
 
         try:
@@ -123,12 +129,9 @@ class AletheiaMemory:
         prop = sp.together(proposed_lhs - proposed_rhs)
         canon = sp.together(canonical_lhs - canonical_rhs)
 
-        # Каскад Алечки: сверка тождества ЦЕЛЫХ уравнений,
-        # а не их частей (инвариантно к перевороту и переносу слагаемых)
-        #
-        # Примечание (Шаг 2): каноны с нулевой правой частью (законы сохранения)
-        # обрабатываются тем же каскадом: разница канона div_J + drho_dt - 0
-        # ненулевая, поэтому срабатывает шаг пропорциональности.
+        # Слой тождеств (v1.2): div(rot)=0, rot(grad)=0 — и к канону, и к гипотезе
+        prop = simplify_identities(prop)
+        canon = simplify_identities(canon)
 
         # Шаг 1: прямое тождество
         residual = sp.simplify(sp.cancel(prop - canon))
@@ -136,7 +139,6 @@ class AletheiaMemory:
             return True, f"OK: совпадает с каноническим законом '{law_name}'."
 
         # Шаг 2: пропорциональность с точностью до ненулевой константы
-        # (ловит 0 = 2*J против 0 = J)
         if canon != 0:
             k = sp.simplify(sp.cancel(prop / canon))
             if k.is_number and k != 0:
@@ -147,11 +149,15 @@ class AletheiaMemory:
                     )
 
         # Шаг 3: эквивалентность нулевых множеств
-        # (ловит умножение уравнения на переменный множитель: m = E/c^2)
         shared = sorted(prop.free_symbols & canon.free_symbols, key=lambda s: s.name)
         for s in shared:
-            sol_prop = [sp.simplify(x) for x in sp.solve(prop, s)]
-            sol_canon = [sp.simplify(x) for x in sp.solve(canon, s)]
+            try:
+                sol_prop = [sp.simplify(x) for x in sp.solve(prop, s)]
+                sol_canon = [sp.simplify(x) for x in sp.solve(canon, s)]
+            except NotImplementedError:
+                # solve не умеет решать уравнения с AppliedUndef (rot(E) и пр.) —
+                # это не ошибка гипотезы, просто шаг неприменим: идём дальше
+                continue
             if len(sol_prop) == len(sol_canon) and all(
                 any(a.equals(b) for b in sol_canon) for a in sol_prop
             ):
@@ -164,5 +170,5 @@ class AletheiaMemory:
             False,
             f"ОШИБКА: физика не сходится с '{law_name}'. "
             f"Разница: {proposed_lhs} - {proposed_rhs} vs "
-            f"{canonical_lhs} - {canonical_rhs}. Проверьте константы.",
+            f"{canonical_lhs} - {canonical_rhs}."
         )

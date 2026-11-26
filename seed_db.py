@@ -5,7 +5,10 @@
 
 import math
 
+
 from graph_db import AletheiaMemory
+from maxwell_seed import MAXWELL_FIELDS
+
 
 # ------------------------------------------------------------------
 # Справочник констант CODATA-2022.
@@ -80,6 +83,11 @@ LAWS = [
     ("wave_equation", "v", "lambda_ * f"),
     # Сохранение заряда: первый канон с нулевой правой частью
     ("continuity_equation", "div_J + drho_dt", "0"),
+    # Электродинамика, v1.2: уравнения Максвелла (канон с нулевой правой частью)
+    ("faraday_law", "rot(E) + ddt(B)", "0"),
+    ("gauss_electric", "div(E)", "rho/epsilon_0"),
+    ("ampere_no_displacement", "rot(B)", "mu_0*j"),
+    ("gauss_magnetic", "div(B)", "0"),
 ]
 
 
@@ -136,7 +144,14 @@ def populate_knowledge_base(db_path="aletheia_memory.db"):
         memory.add_quantity(name, dim, desc)
     print(f"  [+] Загружено {len(OPERATORS)} дифференциальных операторов.")
 
+    # 1б. ПОЛЯ ЭЛЕКТРОДИНАМИКИ (v1.2) — только до законов Максвелла!
+    for name, dim, desc in MAXWELL_FIELDS:
+        memory.add_quantity(name, dim, desc)
+    print(f"  [+] Загружено {len(MAXWELL_FIELDS)} полей электродинамики.")
+
     # 2. КАНОНИЧЕСКИЕ ФИЗИЧЕСКИЕ ЗАКОНЫ
+    # В LAWS теперь 19 законов, включая 4 уравнения Максвелла.
+    # Порядок соблюдён: поля уже в quantities — _safe_parse их пропустит.
     for name, lhs, rhs in LAWS:
         memory.add_law(name, lhs, rhs)
     print(f"  [+] Загружено {len(LAWS)} канонических законов.")
