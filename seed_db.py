@@ -7,7 +7,7 @@ import math
 
 
 from graph_db import AletheiaMemory
-from maxwell_seed import MAXWELL_FIELDS
+from maxwell_seed import MAXWELL_FIELDS, get_maxwell_laws
 
 
 # ------------------------------------------------------------------
@@ -58,7 +58,8 @@ OPERATORS = [
 
 # ------------------------------------------------------------------
 # Канонические законы: (имя_закона, левая_часть, правая_часть).
-# Тоже на уровне модуля — единый источник истины для базы и тестов.
+# Базовые законы — здесь; уравнения Максвелла живут в maxwell_seed.py
+# и подтягиваются оттуда. Единый источник истины, дублей нет.
 # ------------------------------------------------------------------
 LAWS = [
     # Механика
@@ -83,12 +84,10 @@ LAWS = [
     ("wave_equation", "v", "lambda_ * f"),
     # Сохранение заряда: первый канон с нулевой правой частью
     ("continuity_equation", "div_J + drho_dt", "0"),
-    # Электродинамика, v1.2: уравнения Максвелла (канон с нулевой правой частью)
-    ("faraday_law", "rot(E) + ddt(B)", "0"),
-    ("gauss_electric", "div(E)", "rho/epsilon_0"),
-    ("ampere_no_displacement", "rot(B)", "mu_0*j"),
-    ("gauss_magnetic", "div(B)", "0"),
 ]
+
+# Полный канон: базовые законы + уравнения Максвелла из maxwell_seed (v1.3).
+CANONICAL_LAWS = [*LAWS, *get_maxwell_laws()]
 
 
 def verify_codata_consistency():
@@ -150,11 +149,11 @@ def populate_knowledge_base(db_path="aletheia_memory.db"):
     print(f"  [+] Загружено {len(MAXWELL_FIELDS)} полей электродинамики.")
 
     # 2. КАНОНИЧЕСКИЕ ФИЗИЧЕСКИЕ ЗАКОНЫ
-    # В LAWS теперь 19 законов, включая 4 уравнения Максвелла.
+    # 15 базовых законов + 5 из maxwell_seed (v1.3: полный Ампер с током смещения).
     # Порядок соблюдён: поля уже в quantities — _safe_parse их пропустит.
-    for name, lhs, rhs in LAWS:
+    for name, lhs, rhs in CANONICAL_LAWS:
         memory.add_law(name, lhs, rhs)
-    print(f"  [+] Загружено {len(LAWS)} канонических законов.")
+    print(f"  [+] Загружено {len(CANONICAL_LAWS)} канонических законов.")
 
     # 3. САМОПРОВЕРКА БАЗЫ
     print("[*] Проверка самосогласованности констант CODATA:")

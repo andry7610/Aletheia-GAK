@@ -1,10 +1,33 @@
 # -*- coding: utf-8 -*-
-"""Приёмка уравнений Максвелла на живом каскаде Aletheia-GAK (v1.2)."""
+"""Приёмка уравнений Максвелла на живом каскаде Aletheia-GAK (v1.3)."""
 import pytest
+import sympy as sp
+from sympy.parsing.sympy_parser import parse_expr
 
 from graph_db import AletheiaMemory
-from maxwell_seed import MAXWELL_FIELDS, get_maxwell_laws
+from maxwell_seed import MAXWELL_FIELDS, get_maxwell_laws, MAXWELL_LAWS
 from seed_db import CONSTANTS, OPERATORS
+from derivation import derive_continuity
+from vector_ops import div, rot, ddt
+
+
+# ------------------------------------------------------------------
+# Пространство канона: без подсовывания операторов парсеру
+# sympify подхватит SymPy-овскую div(f, g) (полиномиальное деление)
+# и упадёт с TypeError. Парсим строго в нашем пространстве.
+# ------------------------------------------------------------------
+_LOCAL = {
+    "div": div, "rot": rot, "ddt": ddt,
+    **{n: sp.Symbol(n) for n in ("E", "B", "j", "rho",
+                                 "drho_dt", "mu_0", "epsilon_0")},
+}
+RHO = sp.Symbol("rho")
+DRHO = sp.Symbol("drho_dt")
+
+
+def canon(s: str) -> sp.Expr:
+    """Парсинг в каноническом пространстве операторов и символов."""
+    return parse_expr(s, local_dict=_LOCAL)
 
 
 @pytest.fixture
@@ -83,3 +106,45 @@ def test_continuity_regression(memory):
     memory.add_law("continuity_equation", "div_J + drho_dt", "0")
     ok, msg = memory.check_algebraic_law("div_J + drho_dt", "0", "continuity_equation")
     assert ok, msg
+
+
+# ------------------------------------------------------------------
+# Приёмка v1.3: полный Ампер посажен, непрерывность ВЫВОДИТСЯ.
+# ВАЖНО: derive_continuity принимает СЫРОЕ выражение закона (lhs - rhs)
+# и сам берёт дивергенцию (шаг 0 журнала). Скармливать ему уже взятую
+# дивергенцию нельзя — получится бессмысленное div(div(j)).
+# Функция возвращает КОРТЕЖ (следствие, журнал шагов).
+# ------------------------------------------------------------------
+
+def test_ampere_maxwell_present_v13():
+    laws = {name: (lhs, rhs) for name, lhs, rhs in get_maxwell_laws()}
+    assert "ampere_maxwell" in laws
+    lhs, rhs = laws["ampere_maxwell"]
+    assert "ddt(E)" in lhs and "epsilon_0" in lhs and rhs == "0"
+
+
+def test_old_ampere_marked_stationary():
+    desc = MAXWELL_LAWS["ampere_no_displacement"]["description"]
+    assert "СТАЦИОНАРНОЕ" in desc.upper()
+
+
+def test_continuity_derived_from_full_ampere():
+    expr = canon("rot(B) - mu_0*(j + epsilon_0*ddt(E))")
+    result, log = derive_continuity(expr, vector_fields=["j", "E"])
+    expected = canon("drho_dt + div(j)")
+    assert result != 0, f"слой вернул пустоту, журнал: {log}"
+    # Уравнение A*x = 0 эквивалентно x = 0 при любом ненулевом скаляре A,
+    # поэтому допускаем произвольный ненулевой скалярный множитель.
+    ratio = sp.simplify(result / expected)
+    assert not (ratio.has(div) or ratio.has(ddt)), \
+        f"непрерывность не вывелась: {result}\nжурнал: {log}"
+
+
+def test_continuity_not_derived_from_old_ampere():
+    expr = canon("rot(B) - mu_0*j")
+    result, log = derive_continuity(expr, vector_fields=["j", "E"])
+    assert result != 0, f"слой вернул пустоту, журнал: {log}"
+    # из стационарного Ампера производная плотности заряда НЕ возникает —
+    # база умеет отказываться выводить то, что не следует
+    assert not result.has(DRHO) and not result.has(ddt(RHO)), \
+        f"из старого Ампера вывелась непрерывность?! {result}"
